@@ -4,6 +4,7 @@ Saturday 21 November 2026 world news. Written from scratch for this
 competition. Run: python3 main.py  ->  entry.png
 """
 import math
+import os
 from PIL import Image, ImageDraw, ImageFont
 
 W, H = 1024, 1024
@@ -29,6 +30,16 @@ PURPLE = (109, 40, 217)
 
 # ---------------------------------------------------------------- fonts
 def font(name, size):
+    # Bundled fonts ship in fonts/ next to this script so the program does
+    # not depend on the sandbox having any system fonts installed.
+    here = os.path.dirname(os.path.abspath(__file__))
+    bundled = {
+        "bold": os.path.join(here, "fonts", "NotoSans-Bold.ttf"),
+        "reg": os.path.join(here, "fonts", "NotoSans-Regular.ttf"),
+        "it": os.path.join(here, "fonts", "NotoSans-Italic.ttf"),
+        "serif": os.path.join(here, "fonts", "NotoSerif-Bold.ttf"),
+        "serifreg": os.path.join(here, "fonts", "NotoSerif-Regular.ttf"),
+    }
     paths = {
         "bold": "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf",
         "reg": "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
@@ -43,10 +54,12 @@ def font(name, size):
         "serif": "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf",
         "serifreg": "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
     }
-    try:
-        return ImageFont.truetype(paths[name], size)
-    except Exception:
-        return ImageFont.truetype(fb[name], size)
+    for cand in (bundled[name], paths[name], fb[name]):
+        try:
+            return ImageFont.truetype(cand, size)
+        except Exception:
+            continue
+    return ImageFont.load_default()
 
 F = {
     "mast": font("serif", 40),
@@ -570,8 +583,15 @@ def build():
     y += 12
 
     assert y == H, f"layout height {y} != {H}"
-    img.save("entry.png")
-    print(f"saved entry.png {W}x{H}, layout ends at y={y}")
+    # The server runs the program with the repo mounted read-only and names
+    # the writable output directory via MAKEFUN_OUTPUT_DIR; locally (no env
+    # var) write next to this script.
+    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR") or os.path.dirname(
+        os.path.abspath(__file__))
+    os.makedirs(out_dir, exist_ok=True)
+    dst = os.path.join(out_dir, "entry.png")
+    img.save(dst)
+    print(f"saved {dst} {W}x{H}, layout ends at y={y}")
 
 if __name__ == "__main__":
     build()
